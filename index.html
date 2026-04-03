@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokedéx - Trabalho N1</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="busca-container">
+        <h1>Pokémon Search</h1>
+        <div>
+            <input type="text" id="inputPokemon" placeholder="Digite o nome (ex: sunflora)">
+            <button onclick="buscarPokemon()">Buscar</button>
+        </div>
+    </div>
+
+    <div id="telaInicial" class="bloco-info">
+        <h2>Bem-vindo ao Universo Pokémon!</h2>
+        <p>O universo Pokémon é vasto e repleto de criaturas incríveis, classificadas em 18 tipos elementares diferentes (como Fogo, Água e Dragão), cada um com suas próprias vantagens e fraquezas em batalhas.</p>
+        <p>Utilize a barra de busca acima para explorar nossa base de dados. Aqui estão algumas sugestões clássicas para você começar:</p>
+        
+        <div class="sugestoes-grid">
+            <div class="sugestao-card" onclick="buscarDireto('bulbasaur')">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png" alt="Bulbasaur">
+                <p>Bulbasaur</p>
+            </div>
+            <div class="sugestao-card" onclick="buscarDireto('charmander')">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png" alt="Charmander">
+                <p>Charmander</p>
+            </div>
+            <div class="sugestao-card" onclick="buscarDireto('squirtle')">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png" alt="Squirtle">
+                <p>Squirtle</p>
+            </div>
+            <div class="sugestao-card" onclick="buscarDireto('pikachu')">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu">
+                <p>Pikachu</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="areaCarregamento" class="bloco-info" style="display: none; text-align: center;">
+        <p>Buscando dados e calculando estatísticas... aguarde.</p>
+    </div>
+
+    <div id="areaResultado" class="layout-principal" style="display: none;"></div>
+
+    <div id="areaSemelhantes" class="bloco-info" style="display: none;"></div>
+
+    <div class="powered-by">Powered by Search+ industries</div>
+
+    <script>
+        function buscarDireto(nome) {
+            document.getElementById('inputPokemon').value = nome;
+            buscarPokemon();
+        }
+
+        async function buscarPokemon() {
+            const input = document.getElementById('inputPokemon').value.trim().toLowerCase();
+            if (!input) { alert('Por favor, digite um nome!'); return; }
+
+            document.getElementById('telaInicial').style.display = 'none';
+            document.getElementById('areaResultado').style.display = 'none';
+            document.getElementById('areaSemelhantes').style.display = 'none';
+            document.getElementById('areaCarregamento').style.display = 'block';
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/pokemon/${input}`);
+                if (!response.ok) throw new Error('Pokémon não encontrado.');
+                const dados = await response.json();
+
+                let htmlStatus = '<div class="estatisticas-container">';
+                dados.status.forEach(s => { 
+                    const valorMedia = dados.media_tipo ? dados.media_tipo[s.atributoIngles] : 0;
+                    const larguraPokemon = Math.min((s.valor / 150) * 100, 100);
+                    const larguraMedia = Math.min((valorMedia / 150) * 100, 100);
+
+                    htmlStatus += `
+                        <div class="stat-bloco">
+                            <span class="stat-nome">${s.atributo}: <strong>${s.valor}</strong></span>
+                            <div class="barra-fundo"><div class="barra-preenchida cor-pokemon" style="width: ${larguraPokemon}%"></div></div>
+                            <span class="stat-media">Média tipo ${dados.tipo_principal}: <strong>${valorMedia}</strong></span>
+                            <div class="barra-fundo"><div class="barra-preenchida cor-media" style="width: ${larguraMedia}%"></div></div>
+                        </div>
+                    `; 
+                });
+                htmlStatus += '</div>';
+
+                let htmlEsquerda = dados.inimigo_vantagem 
+                    ? `<h3>Vantagem contra</h3><p>${dados.vantagens}</p><img src="${dados.inimigo_vantagem.imagem}"><p style="text-transform: capitalize;"><b>${dados.inimigo_vantagem.nome}</b></p>`
+                    : `<h3>Vantagem contra</h3><p>${dados.vantagens}</p><p>(Nenhum)</p>`;
+                let htmlDireita = dados.inimigo_fraqueza 
+                    ? `<h3>Fraco contra</h3><p>${dados.fraquezas}</p><img src="${dados.inimigo_fraqueza.imagem}"><p style="text-transform: capitalize;"><b>${dados.inimigo_fraqueza.nome}</b></p>`
+                    : `<h3>Fraco contra</h3><p>${dados.fraquezas}</p><p>(Nenhum)</p>`;
+
+                document.getElementById('areaResultado').innerHTML = `
+                    <div class="side-card left-card">${htmlEsquerda}</div>
+                    <div class="container main-card">
+                        <h2 style="text-transform: capitalize; font-size: 28px; margin-top: 0;">${dados.nome}</h2>
+                        <img src="${dados.imagem}" alt="${dados.nome}">
+                        <p><strong>Habitat:</strong> ${dados.habitat_regiao}</p>
+                        <p><strong>Descrição:</strong> ${dados.descricao}</p>
+                        <h3 style="margin-top: 25px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Comparação de Status</h3>
+                        ${htmlStatus}
+                    </div>
+                    <div class="side-card right-card">${htmlDireita}</div>
+                `;
+
+                let htmlSemelhantes = `<h3 style="text-align: center; margin-top: 0;">Pesquisar semelhantes (Tipo ${dados.tipo_principal})</h3><div class="sugestoes-grid">`;
+                dados.semelhantes.forEach(p => {
+                    htmlSemelhantes += `
+                        <div class="sugestao-card" onclick="buscarDireto('${p.nome}')">
+                            <img src="${p.imagem}" alt="${p.nome}">
+                            <p style="text-transform: capitalize;">${p.nome}</p>
+                        </div>
+                    `;
+                });
+                htmlSemelhantes += '</div>';
+                
+                document.getElementById('areaSemelhantes').innerHTML = htmlSemelhantes;
+
+                document.getElementById('areaCarregamento').style.display = 'none';
+                document.getElementById('areaResultado').style.display = 'grid'; 
+                document.getElementById('areaSemelhantes').style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('areaCarregamento').innerHTML = `<p style="color: red;">Erro: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
