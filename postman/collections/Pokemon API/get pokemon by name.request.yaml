@@ -1,0 +1,42 @@
+$kind: http-request
+name: get pokemon by name
+method: GET
+url: 'http://localhost:3000/api/pokemon/pikachu'
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const response = pm.response.json();
+
+      // Flatten if it's an object (not array), wrap in array
+      const data = Array.isArray(response) ? response : [response];
+
+      // Get all keys from the first item
+      const keys = Object.keys(data[0]);
+
+      const template = `
+      <style>
+        body { font-family: sans-serif; padding: 10px; }
+        table { border-collapse: collapse; width: 100%; }
+        th { background: #4CAF50; color: white; padding: 8px 12px; text-align: left; }
+        td { border: 1px solid #ddd; padding: 8px 12px; vertical-align: top; word-break: break-word; max-width: 300px; }
+        tr:nth-child(even) { background: #f9f9f9; }
+      </style>
+      <table>
+        <thead>
+          <tr>{{#each keys}}<th>{{this}}</th>{{/each}}</tr>
+        </thead>
+        <tbody>
+          {{#each data}}
+          <tr>
+            {{#each ../keys}}
+            <td>{{lookup ../this this}}</td>
+            {{/each}}
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+      `;
+
+      pm.visualizer.set(template, { data, keys });
